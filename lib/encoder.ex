@@ -127,6 +127,17 @@ defimpl Jason.Encoder, for: Any do
 
           Protocol.derive(Jason.Encoder, NameOfTheStruct, only: [...])
           Protocol.derive(Jason.Encoder, NameOfTheStruct)
+
+      You can also sort the keys in the output JSON, either according to \
+      Erlang's term ordering:
+
+          @derive {Jason.Encoder, sort_keys: true}
+          defstruct ...
+
+      Or using a custom sort function, as passed to `Enum.sort/2`:
+
+          @derive {Jason.Encoder, sort_keys: &(&1>=&2)}
+          defstruct ...
       """
   end
 
@@ -138,7 +149,15 @@ defimpl Jason.Encoder, for: Any do
   end
 
   defp fields_to_encode(struct, opts) do
-    fields = Map.keys(struct)
+    fields =  case Keyword.get(opts, :sort_keys) do
+      true ->
+        Map.keys(struct) |> Enum.sort()
+      sort_fn when is_function(sort_fn, 2) ->
+        Map.keys(struct)
+        |> Enum.sort(sort_fn)
+      nil ->
+        Map.keys(struct)
+    end
 
     cond do
       only = Keyword.get(opts, :only) ->
